@@ -1,15 +1,18 @@
-const io = require('socket.io-client');
-const fetch = require('isomorphic-unfetch');
+const io = require("socket.io-client");
+const fetch = require("isomorphic-unfetch");
 
 // Sheet.Best Configs
 const sbApi = process.env.SHEETBEST_API_URL;
 const sbApiKey = process.env.SHEETBEST_API_KEY;
-const reqHeaders = { 'Content-Type': 'application/json', 'X-Api-Key': sbApiKey };
-const deleteHeaders = { 'X-Api-Key': sbApiKey };
+const reqHeaders = {
+  "Content-Type": "application/json",
+  "X-Api-Key": sbApiKey,
+};
+const deleteHeaders = { "X-Api-Key": sbApiKey };
 
 // Socket.io initialization
 const jwt = process.env.JWT_TOKEN;
-const socket = io('wss://idlescape.com', { query: { token: `Bearer ${jwt}` } });
+const socket = io("wss://idlescape.com", { query: { token: `Bearer ${jwt}` } });
 
 // Constants
 // Every 200ms (+/- 100ms)
@@ -23,17 +26,17 @@ let routineTime;
 let routineCount = 0;
 
 // Socket message handlers
-socket.on('pong', data => socket.emit('latency', data));
+socket.on("pong", (data) => socket.emit("latency", data));
 
-socket.on('get market manifest', data => {
-  console.log('Updating market,', data.length, 'items found.');
+socket.on("get market manifest", (data) => {
+  console.log("Updating market,", data.length, "items found.");
   routineTime = new Date();
   routineCount = data.length;
   itemQueue = getItemIds(data);
   itemRoutine();
 });
 
-socket.on('get player marketplace items', data => {
+socket.on("get player marketplace items", (data) => {
   const body = processItemData(data);
   if (body != null) {
     processedQueue.push(body);
@@ -41,13 +44,13 @@ socket.on('get player marketplace items', data => {
 });
 
 // Utilitary functions
-const getItemIds = newItems => newItems.slice(0).map(it => it.itemID);
+const getItemIds = (newItems) => newItems.slice(0).map((it) => it.itemID);
 
 const chooseRandomItem = (len, count) => {
   console.log(
-    'Picking item',
+    "Picking item",
     count - (len - 1),
-    'of',
+    "of",
     count,
     `(${(((count - (len - 1)) / count) * 100).toFixed(2)}%)`
   );
@@ -55,7 +58,7 @@ const chooseRandomItem = (len, count) => {
   return idx;
 };
 
-const getRelativeMin = data =>
+const getRelativeMin = (data) =>
   Math.floor(
     data.reduce((acc, it) => acc + it.price * it.stackSize, 0) /
       data.reduce((acc, it) => acc + it.stackSize, 0)
@@ -65,19 +68,23 @@ const getPercent = (data, percent) => {
   return pct >= 1 ? pct : 1;
 };
 
-const processItemData = data => {
+const processItemData = (data) => {
   if (data.length <= 0) {
     return null;
   }
-  console.log('Processing:', data[0].name, `(${data[0].itemID})`);
+  console.log("Processing:", data[0].name, `(${data[0].itemID})`);
   const middle = Math.floor((data.length - 1) / 2);
   const medianData = data[!isNaN(middle) && middle >= 0 ? middle : 0];
   const median =
-    medianData != null && medianData.hasOwnProperty('price') ? medianData.price : data[0].price;
+    medianData != null && medianData.hasOwnProperty("price")
+      ? medianData.price
+      : data[0].price;
   // Removes outliers (Price > 1 Billion or 100x greater than the median)
-  const filtered = data.filter(it => it.price <= 1000000000 && it.price <= median * 100);
+  const filtered = data.filter(
+    (it) => it.price <= 1000000000 && it.price <= median * 100
+  );
   if (filtered.length <= 0) {
-    console.log('Everything was filtered out', JSON.stringify(data));
+    console.log("Everything was filtered out", JSON.stringify(data));
     return null;
   }
   const sum = filtered.reduce((acc, it) => acc + it.price, 0);
@@ -96,11 +103,18 @@ const processItemData = data => {
       offerCount: data.length,
       relativeMinPriceFirst5: getRelativeMin(filtered.slice(0, 5)),
       relativeMinPriceFirst10: getRelativeMin(filtered.slice(0, 10)),
-      relativeMinPriceFirst5Pct: getRelativeMin(filtered.slice(0, getPercent(filtered, 0.05))),
-      relativeMinPriceFirst10Pct: getRelativeMin(filtered.slice(0, getPercent(filtered, 0.1))),
-      relativeMinPriceFirst15Pct: getRelativeMin(filtered.slice(0, getPercent(filtered, 0.15))),
+      relativeMinPriceFirst5Pct: getRelativeMin(
+        filtered.slice(0, getPercent(filtered, 0.05))
+      ),
+      relativeMinPriceFirst10Pct: getRelativeMin(
+        filtered.slice(0, getPercent(filtered, 0.1))
+      ),
+      relativeMinPriceFirst15Pct: getRelativeMin(
+        filtered.slice(0, getPercent(filtered, 0.15))
+      ),
       stdDeviation: Math.sqrt(
-        filtered.reduce((acc, it) => acc + Math.pow(it.price - mean, 2), 0) / filtered.length
+        filtered.reduce((acc, it) => acc + Math.pow(it.price - mean, 2), 0) /
+          filtered.length
       ),
       routineAt: routineTime.toISOString(),
       updatedAt: new Date().toISOString(),
@@ -109,26 +123,26 @@ const processItemData = data => {
   };
 };
 
-const updatesSheetItems = async queue => {
+const updatesSheetItems = async (queue) => {
   try {
-    console.log('ABOUT TO WRITE TO THE SPREADSHEET', new Date());
+    console.log("ABOUT TO WRITE TO THE SPREADSHEET", new Date());
     await fetch(`${sbApi}/0:400`, {
       headers: deleteHeaders,
-      method: 'DELETE',
+      method: "DELETE",
     });
     await fetch(sbApi, {
       headers: reqHeaders,
       body: JSON.stringify(queue),
-      method: 'POST',
+      method: "POST",
     });
     await fetch(`${sbApi}/tabs/market-history`, {
       headers: reqHeaders,
       body: JSON.stringify(queue),
-      method: 'POST',
+      method: "POST",
     });
-    console.log('SPREADSHEET UPDATED', new Date());
+    console.log("SPREADSHEET UPDATED", new Date());
   } catch (e) {
-    console.log('Errored at:', new Date().toISOString());
+    console.log("Errored at:", new Date().toISOString());
     console.error(e);
     throw e;
   }
@@ -136,26 +150,38 @@ const updatesSheetItems = async queue => {
 
 // Main routines
 const marketRoutine = () => {
-  console.log('ITS TIME TO UPDATE', new Date().toISOString());
+  console.log("ITS TIME TO UPDATE", new Date().toISOString());
   processedQueue = [];
-  socket.emit('get market manifest');
+  socket.emit("get market manifest");
 };
 
 const itemRoutine = () => {
   let idx = chooseRandomItem(itemQueue.length, routineCount);
   let it = itemQueue.splice(idx, 1)[0];
-  socket.emit('get player marketplace items', it);
-  if (itemQueue.length > 0 || processedQueue.length < routineCount) {
+  socket.emit("get player marketplace items", it);
+  console.log(
+    "Processed Queue",
+    processedQueue.length,
+    "\nRoutineCount",
+    routineCount,
+    "\nItemQueue",
+    itemQueue.length
+  );
+  if (itemQueue.length > 0) {
     setTimeout(
       itemRoutine,
-      ITEM_ROUTINE_TIMEOUT + Math.floor(Math.random() * ITEM_RAND_TIMEOUT) - ITEM_RAND_TIMEOUT / 2
+      ITEM_ROUTINE_TIMEOUT +
+        Math.floor(Math.random() * ITEM_RAND_TIMEOUT) -
+        ITEM_RAND_TIMEOUT / 2
     );
   } else {
     updatesSheetItems(
-      processedQueue.sort((a, b) => parseInt(a.id.toString(), 10) - parseInt(b.id.toString(), 10))
+      processedQueue.sort(
+        (a, b) => parseInt(a.id.toString(), 10) - parseInt(b.id.toString(), 10)
+      )
     );
   }
 };
 
-console.log('STARTING CLIENT');
+console.log("STARTING CLIENT");
 setTimeout(() => marketRoutine(), 1000);
