@@ -1,5 +1,10 @@
+require("dotenv/config");
+
 const io = require("socket.io-client");
 const fetch = require("isomorphic-unfetch");
+
+// Web Configs
+const webApi = process.env.WEB_API_URL;
 
 // Sheet.Best Configs
 const sbApi = process.env.SHEETBEST_API_URL;
@@ -138,6 +143,17 @@ const updatesSheetItems = async (queue) => {
     await fetch(`${sbApi}/tabs/market-history`, {
       headers: reqHeaders,
       body: JSON.stringify(queue),
+      method: "POST",
+    });
+    await fetch(`${webApi}/update-market-prices-cache`, {
+      headers: { "Content-type": "application/json" },
+      body: JSON.stringify(
+        queue.map((it) => ({
+          itemID: it.id,
+          routineAtTime: it.routineAtTime,
+          ...JSON.parse(it.data),
+        }))
+      ),
       method: "POST",
     });
     console.log("SPREADSHEET UPDATED", new Date());
