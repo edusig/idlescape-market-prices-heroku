@@ -33,7 +33,7 @@ let routineCount = 0;
 // Socket message handlers
 socket.on("pong", (data) => socket.emit("latency", data));
 
-socket.on("get market manifest", (data) => {
+socket.on("get the market manifest", (data) => {
   console.log("Updating market,", data.length, "items found.");
   routineTime = new Date();
   routineCount = data.length;
@@ -168,7 +168,7 @@ const updatesSheetItems = async (queue) => {
 const marketRoutine = () => {
   console.log("ITS TIME TO UPDATE", new Date().toISOString());
   processedQueue = [];
-  socket.emit("get market manifest");
+  socket.emit("get the market manifest");
 };
 
 const itemRoutine = () => {
