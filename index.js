@@ -17,7 +17,10 @@ const deleteHeaders = { "X-Api-Key": sbApiKey };
 
 // Socket.io initialization
 const jwt = process.env.JWT_TOKEN;
-const socket = io("wss://idlescape.com", { query: { token: `Bearer ${jwt}` } });
+const characterID = process.env.CHARACTER_ID;
+const socket = io("wss://idlescape.com", {
+  query: { token: `Bearer ${jwt}`, characterID },
+});
 
 // Constants
 // Every 200ms (+/- 100ms)
@@ -200,4 +203,4 @@ const itemRoutine = () => {
 };
 
 console.log("STARTING CLIENT");
-setTimeout(() => marketRoutine(), 1000);
+setTimeout(() => marketRoutine(), 2000);
